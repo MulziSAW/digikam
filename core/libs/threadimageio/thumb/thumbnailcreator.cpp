@@ -309,7 +309,7 @@ QImage ThumbnailCreator::load(const ThumbnailIdentifier& identifier, const QRect
         // detail thumbnails are stored readily rotated
         if (d->exifRotate && rect.isNull())
         {
-            image.qimage = exifRotate(image.qimage, image.exifOrientation);
+            //image.qimage = exifRotate(image.qimage, image.exifOrientation);
         }
     }
 
@@ -474,6 +474,16 @@ ThumbnailImage ThumbnailCreator::createThumbnail(const ThumbnailInfo& info, cons
     bool failedAtDImg        = false;
     bool failedAtJPEGScaled  = false;
     bool failedAtPGFScaled   = false;
+    bool usePreview          = false;
+
+    QString prePath = info.filePath;
+    prePath.append(QLatin1String(".preview"));
+    QFileInfo previewInfo(prePath);
+    if (previewInfo.exists() && previewInfo.isFile())
+    {
+        usePreview = true;
+        qCDebug(DIGIKAM_GENERAL_LOG) << "Found .preview file: " << previewInfo.filePath();
+    }
 
     // -- Get the image preview --------------------------------
 
@@ -482,6 +492,7 @@ ThumbnailImage ThumbnailCreator::createThumbnail(const ThumbnailInfo& info, cons
 
     if (!detailRect.isNull())
     {
+        qCWarning(DIGIKAM_GENERAL_LOG) << "we have to load the image full size";
         // when taking a detail, we have to load the image full size
         qimage     = loadImageDetail(info, metadata, detailRect, &profile);
         fromDetail = !qimage.isNull();
@@ -490,12 +501,26 @@ ThumbnailImage ThumbnailCreator::createThumbnail(const ThumbnailInfo& info, cons
     {
         QMimeDatabase mimeDB;
 
-        if (!mimeDB.mimeTypeForFile(path).name().startsWith(QLatin1String("video/")))
+        if (usePreview) {
+            qCDebug(DIGIKAM_GENERAL_LOG) << "Use .preview as thumbnail";
+            if (colorManage)
+            {
+                qimage = loadWithDImg(path, &profile);
+            }
+            else
+                // use jpegutils
+            {
+                JPEGUtils::loadJPEGScaled(qimage, path, d->storageSize());
+            }
+
+            failedAtJPEGScaled = qimage.isNull();
+        }
+        else if (!mimeDB.mimeTypeForFile(path).name().startsWith(QLatin1String("video/")))
         {
             if (qimage.isNull())
             {
                 // Try to extract Exif/IPTC preview first.
-                qimage = loadImagePreview(metadata);
+                //qimage = loadImagePreview(metadata);
             }
 
             // To speed-up thumb extraction, we now try to load the images by the file extension.
@@ -620,6 +645,7 @@ ThumbnailImage ThumbnailCreator::createThumbnail(const ThumbnailInfo& info, cons
     ThumbnailImage image;
     image.qimage          = qimage;
     image.exifOrientation = exifOrientation(info, metadata, fromEmbeddedPreview, fromDetail);
+    qCWarning(DIGIKAM_GENERAL_LOG) << "exifOrientation: " << image.exifOrientation;
     return image;
 }
 
@@ -639,22 +665,6 @@ QImage ThumbnailCreator::loadImageDetail(const ThumbnailInfo& info, const DMetad
                                          const QRect& detailRect, IccProfile* const profile) const
 {
     const QString& path = info.filePath;
-    // Check the first and largest preview (Raw files)
-    MetaEnginePreviews previews(path);
-
-    if (!previews.isEmpty())
-    {
-        // discard if smaller than half preview
-        int acceptableWidth  = lround(previews.originalSize().width()  * 0.5);
-        int acceptableHeight = lround(previews.originalSize().height() * 0.5);
-
-        if (previews.width() >= acceptableWidth &&  previews.height() >= acceptableHeight)
-        {
-            QImage qimage           = previews.image();
-            QRect reducedSizeDetail = TagRegion::mapFromOriginalSize(previews.originalSize(), qimage.size(), detailRect);
-            return qimage.copy(reducedSizeDetail.intersected(qimage.rect()));
-        }
-    }
 
     // load DImg
     DImg img;
@@ -668,7 +678,7 @@ QImage ThumbnailCreator::loadImageDetail(const ThumbnailInfo& info, const DMetad
     // We must rotate before clipping because the rect refers to the oriented image.
     // I do not know currently how to back-rotate the rect for clipping before rotation.
     // If someone has the mathematics, have a go.
-    img.rotateAndFlip(exifOrientation(info, metadata, false, false));
+    //img.rotateAndFlip(exifOrientation(info, metadata, false, false));
 
     QRect mappedDetail = TagRegion::mapFromOriginalSize(img, detailRect);
     img.crop(mappedDetail.intersected(QRect(0, 0, img.width(), img.height())));

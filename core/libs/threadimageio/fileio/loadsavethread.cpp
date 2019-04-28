@@ -278,6 +278,8 @@ int LoadSaveThread::exifOrientation(const QString& filePath, const DMetadata& me
 {
     int dbOrientation   = MetaEngine::ORIENTATION_UNSPECIFIED;
 
+    return MetaEngine::ORIENTATION_NORMAL;
+
     if (infoProvider())
     {
         dbOrientation = infoProvider()->orientationHint(filePath);

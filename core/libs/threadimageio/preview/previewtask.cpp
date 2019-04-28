@@ -158,6 +158,8 @@ void PreviewLoadingTask::execute()
         DImg::FORMAT format      = DImg::fileFormat(m_loadingDescription.filePath);
         m_fromRawEmbeddedPreview = false;
 
+        format = DImg::JPEG;
+
         if (format == DImg::RAW)
         {
             MetaEnginePreviews previews(m_loadingDescription.filePath);
@@ -299,7 +301,7 @@ void PreviewLoadingTask::execute()
 
         if (!m_img.isNull() && MetaEngineSettings::instance()->settings().exifRotate)
         {
-            LoadSaveThread::exifRotate(m_img, m_loadingDescription.filePath);
+            //LoadSaveThread::exifRotate(m_img, m_loadingDescription.filePath);
         }
 
         LoadingCache::CacheLock lock(cache);
@@ -396,7 +398,7 @@ void PreviewLoadingTask::execute()
 
         if (needExifRotate)
         {
-            LoadSaveThread::exifRotate(m_img, m_loadingDescription.filePath);
+            //LoadSaveThread::exifRotate(m_img, m_loadingDescription.filePath);
         }
 
         if (needPostProcess)

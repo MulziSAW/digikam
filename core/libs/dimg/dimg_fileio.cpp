@@ -102,6 +102,18 @@ bool DImg::load(const QString& filePath,
                 const DRawDecoding& rawDecodingSettings)
 {
     FORMAT format                   = fileFormat(filePath);
+
+    QString prePath = filePath;
+    prePath.append(QLatin1String(".preview"));
+    QFileInfo previewInfo(prePath);
+
+    // If there is a .preview file, change format to 'PREVIEW'
+    if (previewInfo.exists() && previewInfo.isFile())
+    {
+        qCDebug(DIGIKAM_GENERAL_LOG) << "Found .preview file: " << previewInfo.filePath();
+        format = PREVIEW;
+    }
+
     DImgLoader::LoadFlags loadFlags = (DImgLoader::LoadFlags)loadFlagsInt;
 
     setAttribute(QLatin1String("detectedFileFormat"), format);
@@ -115,6 +127,24 @@ bool DImg::load(const QString& filePath,
         {
             qCDebug(DIGIKAM_DIMG_LOG) << filePath << " : Unknown image format !!!";
             return false;
+        }
+
+        case (PREVIEW):
+        {
+            qCDebug(DIGIKAM_DIMG_LOG) << filePath << " : has a .preview file";
+            JPEGLoader loader(this);
+            loader.setLoadFlags(loadFlags);
+
+            if (loader.load(prePath, observer))
+            {
+                m_priv->null       = !loader.hasLoadedData();
+                m_priv->alpha      = loader.hasAlpha();
+                m_priv->sixteenBit = loader.sixteenBit();
+                setAttribute(QLatin1String("isreadonly"), loader.isReadOnly());
+                return true;
+            }
+
+            break;
         }
 
         case (JPEG):

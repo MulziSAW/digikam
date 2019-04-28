@@ -73,7 +73,8 @@ public:
         PGF,
         // Others file formats.
         RAW,
-        QIMAGE  // QImage or ImageMagick
+        QIMAGE,  // QImage or ImageMagick
+        PREVIEW // for external .preview files
     };
 
     enum ANGLE
